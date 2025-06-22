@@ -1,0 +1,9 @@
+{
+  "name": "audiomack-search-parser",
+  "private": false,
+  "author": "MaitreGEEK",
+  "dependencies": {
+    "express": "^5.1.0",
+    "playwright": "^1.53.1"
+  }
+}
