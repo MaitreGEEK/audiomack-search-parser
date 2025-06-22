@@ -14,6 +14,7 @@ Add `Authorization: Bearer <token>` header if `API_TOKEN` is set.
 ```http
 GET /search?query=Aya Nakamura&limit=10
 Authorization: Bearer your_token_here
+```
 
 # Deploying
 To deploy: 
