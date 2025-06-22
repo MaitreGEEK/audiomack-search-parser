@@ -1,5 +1,5 @@
 const express = require('express');
-const { firefox } = require('playwright');
+const { chromium } = require('playwright');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,7 +28,7 @@ function authMiddleware(req, res, next) {
 // Audiomack search function
 async function searchAudiomack(query, limit = 20) {
     try {
-        let browser = await firefox.launch({ headless: true });
+        let browser = await chromium.launch({ headless: true });
         let page = await browser.newPage();
 
         return new Promise(async (resolve) => {
