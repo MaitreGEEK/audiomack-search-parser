@@ -139,7 +139,7 @@ app.get('/search', authMiddleware, async (req, res) => {
 
     if (!results) return res.status(500).json({ error: 'Search failed or no results' });
 
-    res.json({ results });
+    res.json({ success: true, results });
 });
 
 // 🔊 Récupération de l'URL de stream
@@ -151,7 +151,7 @@ app.get('/stream', authMiddleware, async (req, res) => {
 
     if (!streamUrl) return res.status(500).json({ error: 'Failed to get stream URL' });
 
-    res.json({ streamUrl });
+    res.json({ success: true, streamUrl });
 });
 
 app.listen(PORT, () => {
