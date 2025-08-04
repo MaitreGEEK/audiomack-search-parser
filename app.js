@@ -1,6 +1,5 @@
 const express = require('express');
 const { chromium } = require('playwright');
-const { firefox } = require('playwright'); // Import pour getStreamURL
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -73,9 +72,8 @@ async function searchAudiomack(query, limit = 20) {
     }
 }
 
-// ➕ Nouvelle fonction pour récupérer le lien de stream
 async function getStreamURL(trackUrl) {
-    let browser = await firefox.launch({ headless: false });
+    let browser = await chromium.launch({ headless: true });
     let page = await browser.newPage();
     let timeoutId = null;
     let browserClosed = false;
@@ -109,15 +107,9 @@ async function getStreamURL(trackUrl) {
 
         try {
             const playButton = await page.waitForSelector('button[data-amlabs-play-button="true"]', { timeout: 10000 });
-            try {
-                await playButton.click({ timeout: 3000 });
-            } catch (clickErr) {
-                console.warn('Play button found but not clickable:', clickErr);
-                await cleanupAndResolve(null);
-                return;
-            }
+            await playButton.click({ timeout: 3000 });
         } catch (e) {
-            console.warn('Play button not found:', e);
+            console.warn('Play button not clickable or not found:', e);
             await cleanupAndResolve(null);
             return;
         }
@@ -128,7 +120,6 @@ async function getStreamURL(trackUrl) {
         }, 100000);
     });
 }
-
 // 🔍 Recherche
 app.get('/search', authMiddleware, async (req, res) => {
     let { query, limit } = req.query;
