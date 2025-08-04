@@ -1,19 +1,13 @@
 const express = require('express');
 const { chromium } = require('playwright');
+const { firefox } = require('playwright'); // Import pour getStreamURL
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Get API token from env, empty disables auth
 const API_TOKEN = process.env.API_TOKEN || '';
 
-// Middleware to check Bearer token only if API_TOKEN is set
 function authMiddleware(req, res, next) {
-    if (!API_TOKEN) {
-        // No token set, skip auth
-        return next();
-    }
-
+    if (!API_TOKEN) return next();
     let authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Unauthorized: Missing Bearer token' });
@@ -25,7 +19,6 @@ function authMiddleware(req, res, next) {
     next();
 }
 
-// Audiomack search function
 async function searchAudiomack(query, limit = 20) {
     try {
         let browser = await chromium.launch({ headless: true });
@@ -80,18 +73,85 @@ async function searchAudiomack(query, limit = 20) {
     }
 }
 
-// Protected route, conditionally protected
+// ➕ Nouvelle fonction pour récupérer le lien de stream
+async function getStreamURL(trackUrl) {
+    let browser = await firefox.launch({ headless: false });
+    let page = await browser.newPage();
+    let timeoutId = null;
+    let browserClosed = false;
+
+    return new Promise(async (resolve) => {
+        async function cleanupAndResolve(value) {
+            if (!browserClosed) {
+                browserClosed = true;
+                clearTimeout(timeoutId);
+                await browser.close().catch(() => { });
+            }
+            resolve(value);
+        }
+
+        page.on('requestfinished', async (request) => {
+            if (browserClosed) return;
+            let url = request.url();
+            if (url.includes('music.audiomack.com')) {
+                console.log('Found audio URL:', url);
+                await cleanupAndResolve(url);
+            }
+        });
+
+        try {
+            await page.goto(trackUrl, { waitUntil: 'domcontentloaded' });
+        } catch (e) {
+            console.error('Error on page.goto():', e);
+            await cleanupAndResolve(null);
+            return;
+        }
+
+        try {
+            const playButton = await page.waitForSelector('button[data-amlabs-play-button="true"]', { timeout: 10000 });
+            try {
+                await playButton.click({ timeout: 3000 });
+            } catch (clickErr) {
+                console.warn('Play button found but not clickable:', clickErr);
+                await cleanupAndResolve(null);
+                return;
+            }
+        } catch (e) {
+            console.warn('Play button not found:', e);
+            await cleanupAndResolve(null);
+            return;
+        }
+
+        timeoutId = setTimeout(async () => {
+            console.warn('Timeout waiting for audio request.');
+            await cleanupAndResolve(null);
+        }, 100000);
+    });
+}
+
+// 🔍 Recherche
 app.get('/search', authMiddleware, async (req, res) => {
     let { query, limit } = req.query;
     if (!query) return res.status(400).json({ error: 'Missing query parameter' });
 
     let limitNum = Number(limit) || 20;
-
     let results = await searchAudiomack(query, limitNum);
 
     if (!results) return res.status(500).json({ error: 'Search failed or no results' });
 
     res.json({ results });
+});
+
+// 🔊 Récupération de l'URL de stream
+app.get('/stream', authMiddleware, async (req, res) => {
+    let { url } = req.query;
+    if (!url) return res.status(400).json({ error: 'Missing url parameter' });
+
+    let streamUrl = await getStreamURL(url);
+
+    if (!streamUrl) return res.status(500).json({ error: 'Failed to get stream URL' });
+
+    res.json({ streamUrl });
 });
 
 app.listen(PORT, () => {
