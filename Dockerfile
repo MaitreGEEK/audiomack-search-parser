@@ -1,15 +1,17 @@
-FROM node:24-alpine
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy
+
+# Si tu veux bun au lieu de node, installe-le ici, sinon tu as déjà node 20+ dedans
+# ENV bun_version=1.2.4
+# RUN curl -fsSL https://bun.sh/install | bash
 
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-
-RUN npx playwright install firefox
 
 COPY . .
 
-EXPOSE 3000
+# Installe les deps Node.js
+RUN npm install
 
-ENV PORT=3000
+# (Optionnel si tu veux vérifier que les navigateurs sont là)
+RUN npx playwright install --with-deps
 
-CMD ["node", "app.js"]
+CMD ["node", "index.js"] # Ou "bun index.ts" si tu installes bun
